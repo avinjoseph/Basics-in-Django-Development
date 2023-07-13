@@ -2,6 +2,7 @@ from django.test import TestCase
 from django.urls import reverse, resolve
 from .views import home,board_topics, new_topic
 from .models import Board, Topic, Post
+from django.contrib.auth.models import User
 # Create your tests here.
 
 class HomeTests(TestCase):
@@ -46,10 +47,19 @@ class BoardTopictests(TestCase):
         homepage_url = reverse('home')
         self.assertContains(response,'href="{0}"'.format(homepage_url))
 
+    def test_board_topics_view_contains_navigation_links(self):
+        board_topics_url = reverse('board_topics',kwargs={'pk':1})
+        new_topic_url = reverse('new_topic',kwargs={'pk':1})
+        response = self.client.get(board_topics_url)
+        homepage_url = reverse('home')
+        self.assertContains(response,'href="{0}"'.format(homepage_url))
+        self.assertContains(response,'href="{0}"'.format(new_topic_url))
+
 
 class NewTopicsTests(TestCase):
     def setUp(self) -> None:
         Board.objects.create(name='Django',description='Django board')
+        User.objects.create_user(username='john', email='john@doe.com', password='123') 
 
     def test_new_topic_view_success_status_code(self):
         url = reverse('new_topic',kwargs={'pk':1})
@@ -122,3 +132,16 @@ class NewTopicsTests(TestCase):
         self.assertEquals(response.status_code, 200)
         self.assertFalse(Topic.objects.exists())
         self.assertFalse(Post.objects.exists())
+
+    def contains_test_form(self):
+        url = reverse('new_topic',kwargs={'pk':1})
+        response = self.client.get(url)
+        form = response.context.get('form')
+        self.assertIsInstance(form,NewTopicsTests)
+
+    def test_new_topic_invalid_post_data(self):
+        url = reverse('new_topic', kwargs={'pk': 1})
+        response = self.client.post(url, {})
+        form = response.context.get('form')
+        self.assertEquals(response.status_code, 200)
+        self.assertTrue(form.errors)
